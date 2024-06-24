@@ -1,12 +1,10 @@
+import 'dart:math';
+import "package:posterapp/providers/auth_provider.dart";
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:posterapp/services/firebase_auth_services.dart';
-import 'package:posterapp/ui/admin_screens/home_screen.dart';
-import 'package:posterapp/ui/user_screen/user_home_screen.dart';
 import 'package:posterapp/ui/widgets/authentication_buttons.dart';
 import 'package:posterapp/ui/widgets/textfield.dart';
-import 'package:posterapp/utils/utils.dart';
-
+import 'package:provider/provider.dart';
 import 'signup_screen.dart';
 
 class Login_Screen extends StatefulWidget {
@@ -17,52 +15,18 @@ class Login_Screen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<Login_Screen> {
-  bool _showProgress = false;
-  final FirebaseAuthService _authService = FirebaseAuthService();
-  bool _isObscure = true;
-  final _formKey = GlobalKey<FormState>();
+
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+   final _formKey = GlobalKey<FormState>();
 
   // Login function
-  void login(String role) async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _showProgress = true;
-      });
 
-      try {
-        User? user = await _authService.signInWithEmailAndPassword(
-          usernameController.text.trim(),
-          passwordController.text.trim(),
-        );
-
-        if (user != null) {
-          String userRole = await _authService.getUserRole(user.uid);
-          if (userRole == "User") {
-            Utils.toastMesage("Sign In as ${user.email}");
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const UserDashBoard()),
-            );
-          } else {
-            Utils.toastMesage("Sign In as ${user.email}");
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          }
-        }
-      } catch (error) {
-        Utils.toastMesage(error.toString());
-      } finally {
-        setState(() {
-          _showProgress = false;
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+
+    final provider = Provider.of<AuthenticationProvider>(context);
     return Scaffold(
       backgroundColor: const Color.fromRGBO(255, 255, 255, 1),
       body: SingleChildScrollView(
@@ -101,6 +65,7 @@ class _LoginScreenState extends State<Login_Screen> {
                 buildTextField(
                   controller: usernameController,
                   hintText: "Enter Email",
+                  obscureText: false,
                   validator: (value) {
                     if (value!.isEmpty) {
                       return "Email cannot be empty";
@@ -112,37 +77,39 @@ class _LoginScreenState extends State<Login_Screen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                buildTextField(
-                  controller: passwordController,
-                  hintText: "Enter Password",
-                  obscureText: _isObscure,
-                  suffixIcon: IconButton(
-                    icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () {
-                      setState(() {
-                        _isObscure = !_isObscure;
-                      });
+                Consumer(
+                  builder:(context, value, child) {
+                   return buildTextField(
+                    controller: passwordController,
+                    hintText: "Enter Password",
+                    obscureText: provider.isObscure,
+                    suffixIcon: IconButton(
+                      icon: Icon(provider.isObscure ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () {
+                        provider.toggleObscure();
+                      },
+                    ),
+                    validator: (value) {
+                      if (value!.isEmpty) {
+                        return "Password cannot be empty";
+                      }
+                      if (value.length < 6) {
+                        return "Please enter a valid password with min. 6 characters";
+                      }
+                      return null;
                     },
-                  ),
-                  validator: (value) {
-                    if (value!.isEmpty) {
-                      return "Password cannot be empty";
-                    }
-                    if (value.length < 6) {
-                      return "Please enter a valid password with min. 6 characters";
-                    }
-                    return null;
-                  },
+                  );
+                  }
                 ),
                 const SizedBox(height: 30),
                 authButtons(
                   text: "Login In as User",
                   onTap: () {
                     if (_formKey.currentState!.validate()) {
-                      login("User");
+                      provider.login("User",usernameController,passwordController,context);
                     }
                   },
-                  showProgress: _showProgress,
+                  showProgress: provider.loadingUserSignin,
                   color: const Color.fromARGB(255, 113, 158, 231),
                   textColor: Colors.white,
                 ),
@@ -151,10 +118,10 @@ class _LoginScreenState extends State<Login_Screen> {
                   text: "Login In as Admin",
                   onTap: () {
                     if (_formKey.currentState!.validate()) {
-                      login("Admin");
+                      provider.login("Admin",usernameController,passwordController,context);
                     }
                   },
-                  showProgress: _showProgress,
+                  showProgress: provider.loadingAdminSignin,
                   color: Colors.white,
                   textColor: const Color.fromARGB(255, 113, 158, 231),
                   borderColor: const Color.fromARGB(255, 113, 158, 231),
@@ -172,7 +139,7 @@ class _LoginScreenState extends State<Login_Screen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(
+                        Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => const SignupScreen()),
                         );

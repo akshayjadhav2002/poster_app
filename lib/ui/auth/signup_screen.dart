@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:posterapp/providers/auth_provider.dart';
 import 'package:posterapp/services/firebase_auth_services.dart';
 import 'package:posterapp/ui/auth/login_screen.dart';
 import 'package:posterapp/ui/widgets/authentication_buttons.dart';
 import 'package:posterapp/ui/widgets/textfield.dart';
 import 'package:posterapp/utils/utils.dart';
+import 'package:provider/provider.dart';
 import '../../services/firestore_services.dart';
-
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -16,9 +17,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  bool _showProgress = false;
-  final FirebaseAuthService _authService = FirebaseAuthService();
-  final FirestoreService _firestoreService = FirestoreService();
+
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController passwordController = TextEditingController();
@@ -26,47 +25,16 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
 
-  bool _isObscure = true;
-  bool _isObscure2 = true;
+  // bool _isObscure = true;
+  // bool _isObscure2 = true;
   File? file;
-  var role = 'User';
 
-  void signup() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _showProgress = true;
-      });
-      try {
-        final user = await _authService.createUserWithEmailAndPassword(
-          emailController.text.trim(),
-          passwordController.text.trim(),
-        );
-        if (user != null) {
-          await _firestoreService.postDetailsToFirestore(
-            uid: user.uid,
-            email: emailController.text.trim(),
-            role: role,
-            name: nameController.text.trim(),
-          );
-        }
-        setState(() {
-          _showProgress = false;
-        });
-        Utils.toastMesage("Successfully Signed Up!");
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const Login_Screen()),
-        );
-      } catch (error) {
-        Utils.toastMesage(error.toString());
-        setState(() {
-          _showProgress = false;
-        });
-      }
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
+
+    AuthenticationProvider provider = Provider.of<AuthenticationProvider>(context);
     return Scaffold(
       backgroundColor: const Color.fromRGBO(255, 255, 255, 1),
       body: SingleChildScrollView(
@@ -106,6 +74,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 buildTextField(
                   controller: nameController,
                   hintText: "Name",
+                  obscureText: false,
                   validator: (value) {
                     if (value!.isEmpty) {
                       return "Enter a valid name";
@@ -117,6 +86,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 buildTextField(
                   controller: emailController,
                   hintText: "Email",
+                  obscureText: false,
                   validator: (value) {
                     if (value!.isEmpty) {
                       return "Email cannot be empty";
@@ -131,13 +101,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 buildTextField(
                   controller: passwordController,
                   hintText: "Password",
-                  obscureText: _isObscure,
+                  obscureText: provider.isObscureSignUppassword,
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(provider.isObscureSignUppassword ? Icons.visibility : Icons.visibility_off),
                     onPressed: () {
-                      setState(() {
-                        _isObscure = !_isObscure;
-                      });
+                      provider.toggleObsecureOfsignupPassword();
                     },
                   ),
                   validator: (value) {
@@ -154,13 +122,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 buildTextField(
                   controller: confirmPassController,
                   hintText: "Confirm Password",
-                  obscureText: _isObscure2,
+                  obscureText: provider.isObscureSignupConfirmPassword,
                   suffixIcon: IconButton(
-                    icon: Icon(_isObscure2 ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon( provider.isObscureSignupConfirmPassword ? Icons.visibility : Icons.visibility_off),
                     onPressed: () {
-                      setState(() {
-                        _isObscure2 = !_isObscure2;
-                      });
+                      provider.toggleObsecureOfConfirmsignupPassword();
                     },
                   ),
                   validator: (value) {
@@ -173,12 +139,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 20),
                 authButtons(
                   text: "Sign Up as User",
-                  showProgress: _showProgress,
+                  showProgress: provider.loadingProgressSignupUser,
                   onTap: () {
-                    setState(() {
-                      role = "User";
-                    });
-                    signup();
+                    provider.loadingProgressSignupUserButton(true);
+                    provider.signup(emailController, passwordController, nameController, "User", context);
                   },
                   color: const Color.fromARGB(255, 113, 158, 231),
                   textColor: Colors.white,
@@ -186,12 +150,10 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: 20),
                 authButtons(
                   text: "Sign Up as Admin",
-                  showProgress: _showProgress,
+                  showProgress: provider.loadingProgressSignupAdmin,
                   onTap: () {
-                    setState(() {
-                      role = "Admin";
-                    });
-                    signup();
+                    provider.loadingProgressignupAdminButton(true);
+                    provider.signup(emailController, passwordController, nameController, "Admin", context);
                   },
                   color: Colors.white,
                   textColor: const Color.fromARGB(255, 113, 158, 231),

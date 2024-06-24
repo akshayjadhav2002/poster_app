@@ -3,7 +3,7 @@
 Widget buildTextField({
     required TextEditingController controller,
     required String hintText,
-    bool obscureText = false,
+    required bool obscureText,
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
